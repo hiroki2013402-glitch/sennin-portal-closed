@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: sennin-portal
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ORIGIN
+        sync: false
+      - key: OAUTH_AUTHORIZE_URL
+        sync: false
+      - key: OAUTH_CLIENT_ID
+        sync: false
+      - key: OAUTH_CLIENT_SECRET
+        sync: false
+      - key: OAUTH_CLIENT_AUTH_METHOD
+        value: client_secret_basic
+      - key: OAUTH_REDIRECT_URI
+        sync: false
+      - key: OAUTH_SCOPES
+        value: profile email points:read
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: OAUTH_API_BASE_URL
+        value: https://sennin-account-api.xianrendesu.workers.dev
+      - key: OAUTH_TOKEN_URL
+        value: https://sennin-account-api.xianrendesu.workers.dev/oauth/token
+      - key: OAUTH_USERINFO_URL
+        value: https://sennin-account-api.xianrendesu.workers.dev/oauth/userinfo
+      - key: OAUTH_POINTS_URL
+        value: https://sennin-account-api.xianrendesu.workers.dev/api/v1/points
