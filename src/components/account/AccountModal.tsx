@@ -2,11 +2,12 @@ type AccountModalProps = {
   name: string;
   initial: string;
   email?: string;
+  userId?: string;
   onClose: () => void;
   onRefresh: () => void;
 };
 
-export default function AccountModal({ name, initial, email, onClose, onRefresh }: AccountModalProps) {
+export default function AccountModal({ name, initial, email, userId, onClose, onRefresh }: AccountModalProps) {
   return (
     <div className="modal-overlay" onMouseDown={event => {
       if (event.target === event.currentTarget) onClose();
@@ -22,6 +23,7 @@ export default function AccountModal({ name, initial, email, onClose, onRefresh 
           <div className="avatar-large">{initial}</div>
           <h2>{name}</h2>
           <p>{email || 'Sennin Accountで認証済み'}</p>
+          {userId && <p className="account-user-id">ユーザーID: <code>{userId}</code></p>}
           <span className="connected-badge"><i className="fa-solid fa-check-circle" /> Sennin Accountと連携中</span>
         </div>
         <div className="account-actions">

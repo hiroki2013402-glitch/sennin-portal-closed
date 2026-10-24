@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-type OAuthUser = Record<string, unknown> & { sub?: string; id?: string; name?: string; email?: string };
+type OAuthUser = Record<string, unknown> & { sub?: string; id?: string; user_id?: string; name?: string; username?: string; email?: string };
 type OAuthTokens = { access_token: string; refresh_token?: string; expires_in?: number; token_type?: string; scope?: string };
 declare module 'express-session' {
   interface SessionData {
@@ -109,16 +109,21 @@ async function exchangeToken(form: URLSearchParams): Promise<OAuthTokens> {
   headers.set('Content-Type', 'application/x-www-form-urlencoded');
   const response = await fetch(tokenUrl, { method: 'POST', headers, body: form });
   const data = await parseResponse(response);
-  if (typeof data.access_token !== 'string' || !data.access_token) {
+  const payload = (data.data && typeof data.data === 'object' ? data.data : data.token && typeof data.token === 'object' ? data.token : data) as Record<string, unknown>;
+  if (typeof payload.access_token !== 'string' || !payload.access_token) {
     throw new Error('Token response did not include access_token. Check the live OAuth API response and client configuration.');
   }
-  return data as OAuthTokens;
+  return payload as OAuthTokens;
 }
 async function fetchUserInfo(accessToken: string): Promise<OAuthUser> {
   const response = await fetch(userInfoUrl, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
   });
-  return await parseResponse(response) as OAuthUser;
+  const raw = await parseResponse(response);
+  const nested = (raw.user && typeof raw.user === 'object' ? raw.user : raw.profile && typeof raw.profile === 'object' ? raw.profile : raw.data && typeof raw.data === 'object' ? raw.data : raw) as Record<string, unknown>;
+  const id = nested.id ?? nested.user_id ?? nested.userId ?? nested.userID ?? nested.sub ?? nested.uid;
+  if (id === undefined || id === null || String(id).trim() === '') throw new Error('UserInfo response did not include id/user_id/sub.');
+  return { ...nested, id: String(id), sub: String(nested.sub ?? id), username: String(nested.username ?? nested.name ?? ''), name: String(nested.name ?? nested.username ?? 'ユーザー') } as OAuthUser;
 }
 async function refreshTokens(req: Request): Promise<boolean> {
   const current = req.session.tokens;
@@ -237,12 +242,70 @@ app.get('/api/points', requireAuth, async (req, res) => {
       headers: { Authorization: `Bearer ${req.session.tokens!.access_token}`, Accept: 'application/json' }
     });
     const data = await parseResponse(response);
+    const nested = (data.data && typeof data.data === 'object' ? data.data : data.points && typeof data.points === 'object' ? data.points : data) as Record<string, unknown>;
+    const rawPoints = nested.points ?? nested.balance ?? nested.total ?? nested.point_balance ?? nested.available_points ?? nested.current_points ?? nested.point;
+    const points = typeof rawPoints === 'number' ? rawPoints : (typeof rawPoints === 'string' && rawPoints.trim() !== '' ? Number(rawPoints) : NaN);
     res.setHeader('Cache-Control', 'no-store');
-    res.json(data);
+    res.json({ ...data, points: Number.isFinite(points) ? points : undefined, user_id: String(req.session.user?.id ?? req.session.user?.user_id ?? req.session.user?.sub ?? '') });
   } catch (error) {
     const status = (error as Error & { status?: number }).status || 502;
     res.status(status).json({ error: 'points_unavailable', message: 'ポイントAPIから情報を取得できませんでした。' });
   }
+});
+
+app.post('/api/chat/messages', requireAuth, async (req, res) => {
+  const user = req.session.user!;
+  const userId = String(user.id ?? user.user_id ?? user.sub ?? '');
+  const username = String(user.username ?? user.name ?? 'ユーザー').slice(0, 60);
+  const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+  if (!userId) { res.status(401).json({ error: 'account_user_id_missing' }); return; }
+  if (!content || content.length > 1000) { res.status(400).json({ error: 'invalid_message', message: 'メッセージは1〜1000文字で入力してください。' }); return; }
+  const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) { res.status(503).json({ error: 'chat_not_configured', message: 'チャットのサーバー設定が不足しています。' }); return; }
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/portal_messages`, {
+      method: 'POST', headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ user_id: userId, username, content }), signal: AbortSignal.timeout(8000)
+    });
+    const body = await response.text();
+    if (!response.ok) { console.error('Supabase chat insert failed:', response.status, body.slice(0, 300)); res.status(502).json({ error: 'chat_insert_failed', message: 'メッセージを保存できませんでした。' }); return; }
+    const rows = body ? JSON.parse(body) as unknown : [];
+    res.status(201).json(Array.isArray(rows) ? rows[0] : rows);
+  } catch (error) { console.error('Supabase chat error:', error instanceof Error ? error.message : 'unknown'); res.status(502).json({ error: 'chat_unavailable', message: 'チャットサーバーに接続できませんでした。' }); }
+});
+
+const youtubeApiKey = process.env.YOUTUBE_DATA_API_KEY || '';
+const invidiousInstances = (process.env.YOUTUBE_INVIDIOUS_INSTANCES || 'https://inv.nboeck.de,https://yewtu.be,https://iv.ggtyler.dev').split(',').map(v => v.trim().replace(/\/$/, '')).filter(Boolean);
+app.get('/api/youtube/search', async (req, res) => {
+  const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 150) : '';
+  const maxResults = Math.min(25, Math.max(1, Number(req.query.limit) || 12));
+  if (!q) { res.status(400).json({ error: 'query_required', items: [] }); return; }
+  res.setHeader('Cache-Control', 'no-store');
+  if (youtubeApiKey) {
+    try {
+      const url = new URL('https://www.googleapis.com/youtube/v3/search');
+      url.search = new URLSearchParams({ part: 'snippet', type: 'video', q, maxResults: String(maxResults), key: youtubeApiKey }).toString();
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (response.ok) {
+        const data = await response.json() as { items?: Array<{ id?: { videoId?: string }; snippet?: { title?: string; channelTitle?: string; description?: string; thumbnails?: { medium?: { url?: string }; high?: { url?: string }; default?: { url?: string } }; publishedAt?: string } }> };
+        const items = (data.items || []).filter(x => x.id?.videoId).map(x => ({ videoId: x.id!.videoId, title: x.snippet?.title || 'タイトルなし', channelTitle: x.snippet?.channelTitle || '', description: x.snippet?.description || '', thumbnail: x.snippet?.thumbnails?.medium?.url || x.snippet?.thumbnails?.high?.url || x.snippet?.thumbnails?.default?.url || '', publishedAt: x.snippet?.publishedAt || '', source: 'youtube' }));
+        res.json({ source: 'youtube', items }); return;
+      }
+      console.warn('YouTube Data API returned', response.status, 'trying Invidious fallback');
+    } catch (error) { console.warn('YouTube Data API unavailable; trying Invidious fallback:', error instanceof Error ? error.message : 'unknown'); }
+  }
+  for (const instance of invidiousInstances) {
+    try {
+      const url = new URL(`${instance}/api/v1/search`); url.searchParams.set('q', q); url.searchParams.set('type', 'video');
+      const response = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { Accept: 'application/json' } });
+      if (!response.ok) continue;
+      const data = await response.json() as Array<Record<string, unknown>>;
+      const items = data.filter(x => typeof x.videoId === 'string').slice(0, maxResults).map(x => ({ videoId: String(x.videoId), title: String(x.title || 'タイトルなし'), channelTitle: String(x.author || ''), description: String(x.description || ''), thumbnail: String(x.videoThumbnails && Array.isArray(x.videoThumbnails) ? ((x.videoThumbnails as Array<Record<string, unknown>>).find(t => t.quality === 'medium')?.url || (x.videoThumbnails as Array<Record<string, unknown>>)[0]?.url || '') : ''), publishedAt: '', source: 'invidious' }));
+      res.json({ source: 'invidious', items }); return;
+    } catch { /* try next public instance */ }
+  }
+  res.status(502).json({ error: 'youtube_search_unavailable', message: 'YouTube APIとInvidiousの両方で検索できませんでした。APIキーや接続先を確認してください。', items: [] });
 });
 
 app.post('/logout', (req, res) => {

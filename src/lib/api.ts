@@ -4,6 +4,10 @@ export type PointsResponse = {
   points?: number;
   balance?: number;
   total?: number;
+  point_balance?: number | string;
+  available_points?: number | string;
+  current_points?: number | string;
+  point?: number | string;
   [key: string]: unknown;
 };
 

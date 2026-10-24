@@ -10,6 +10,7 @@ import WelcomeCard from './components/dashboard/WelcomeCard';
 import PointsCard from './components/dashboard/PointsCard';
 import ServiceGrid from './components/dashboard/ServiceGrid';
 import AccountModal from './components/account/AccountModal';
+import { ChatPage, GamePage, YouTubePage } from './components/PortalFeatures';
 import { displayInitial, displayName } from './lib/account';
 import { usePortalData } from './hooks/usePortalData';
 
@@ -39,8 +40,9 @@ export default function App() {
     }
   }
 
+  const isGame = active === 'ゲーム';
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${isGame ? 'game-shell' : ''}`}>
       <Sidebar
         expanded={expanded}
         active={active}
@@ -49,7 +51,7 @@ export default function App() {
         onNavigate={choose}
       />
 
-      <div className="main-wrapper">
+      <div className={`main-wrapper ${isGame ? 'game-main-wrapper' : ''}`}>
         <Topbar
           name={name}
           initial={initial}
@@ -60,7 +62,7 @@ export default function App() {
 
         <main className="content">
           <ErrorNotice message={error} />
-          {!user && !loading ? (
+          {active === 'YouTube' ? <YouTubePage /> : active === 'チャット' ? <ChatPage user={user} /> : active === 'ゲーム' ? <GamePage /> : (!user && !loading ? (
             <SignedOut />
           ) : (
             <>
@@ -71,8 +73,8 @@ export default function App() {
               </section>
               <ServiceGrid onNavigate={choose} />
             </>
-          )}
-          <Footer />
+          ))}
+          {!isGame && <Footer />}
         </main>
       </div>
 
@@ -81,6 +83,7 @@ export default function App() {
           name={name}
           initial={initial}
           email={user?.email}
+          userId={String(user?.id ?? user?.user_id ?? user?.userId ?? user?.userID ?? user?.sub ?? '')}
           onClose={() => setAccountOpen(false)}
           onRefresh={() => void refresh()}
         />

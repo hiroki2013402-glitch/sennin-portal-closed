@@ -33,3 +33,15 @@ services:
         value: https://sennin-account-api.xianrendesu.workers.dev/oauth/userinfo
       - key: OAUTH_POINTS_URL
         value: https://sennin-account-api.xianrendesu.workers.dev/api/v1/points
+      - key: YOUTUBE_DATA_API_KEY
+        sync: false
+      - key: YOUTUBE_INVIDIOUS_INSTANCES
+        value: https://inv.nboeck.de,https://yewtu.be,https://iv.ggtyler.dev
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false

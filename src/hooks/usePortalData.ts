@@ -25,9 +25,10 @@ export function usePortalData() {
       setUser(session.user);
       try {
         const result = await getPoints();
-        const candidate = result.points ?? result.balance ?? result.total;
-        setPoints(typeof candidate === 'number' ? candidate : null);
-        setPointsMessage(typeof candidate === 'number' ? '' : 'ポイントAPIの返却形式を確認してください');
+        const candidate = result.points ?? result.balance ?? result.total ?? result.point_balance ?? result.available_points ?? result.current_points ?? result.point;
+        const normalized = typeof candidate === 'number' ? candidate : (typeof candidate === 'string' && candidate.trim() ? Number(candidate) : NaN);
+        setPoints(Number.isFinite(normalized) ? normalized : null);
+        setPointsMessage(Number.isFinite(normalized) ? '' : 'ポイントAPIの返却形式を確認してください');
       } catch {
         setPoints(null);
         setPointsMessage('ポイントを取得できませんでした');

@@ -92,3 +92,17 @@ RenderとRailwayの両方で同じ環境変数名を使えますが、デプロ�
 - ログアウトは失効APIを呼び出してからローカルセッションを破棄します。実際の失効API仕様に差がある場合は、サーバー応答を確認して調整してください。
 - ポイントレスポンスのJSONフィールドは仕様書で確定していないため、フロントは `points`, `balance`, `total` のみを表示候補にしています。実レスポンスに合わせて変更してください。
 - このプロジェクトはポイントを読み取るだけです。ポイント変更APIは権限と管理者制限が未確認のため実装していません。
+
+## Feature setup: YouTube, Supabase chat, and game portal
+
+### YouTube
+Set `YOUTUBE_DATA_API_KEY` to a YouTube Data API v3 key. The backend `/api/youtube/search` endpoint uses the official API first and falls back to the comma-separated `YOUTUBE_INVIDIOUS_INSTANCES` list when the key is missing or the official request fails.
+
+### Supabase chat
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before building the frontend, and set `SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY` only on the server. In Supabase SQL Editor, run `supabase-schema.sql`. The browser can read and subscribe to realtime updates; message inserts go through Express and use the authenticated Sennin Account session to assign the user ID. Never expose the service role key in frontend variables.
+
+### Game portal
+The Game page embeds `https://cdn.jsdelivr.net/gh/CloudMoonApp/web@main/portal-260605.html` in a full-size iframe. The floating bottom-right control can be dragged and toggles the Portal sidebar/header/footer for immersive play. The game document is hosted by a third party; availability and its own security/privacy behavior are outside this project's control.
+
+### OAuth response compatibility
+The server normalizes common UserInfo wrappers (`user`, `profile`) and user identifiers (`id`, `user_id`, `sub`, `uid`), and normalizes common points field names. The live OAuth integration still requires the deployed Sennin Account's actual endpoint URLs, registered Client ID, redirect URI, and token endpoint authentication method to match the environment variables. Do not consider OAuth production-verified until a real login and points request succeed against that deployment.
