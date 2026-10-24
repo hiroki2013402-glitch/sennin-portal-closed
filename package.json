@@ -8,7 +8,7 @@
     "dev:server": "tsx watch server/index.ts",
     "dev:client": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "start": "node dist-server/index.js",
+    "start": "node dist-server/server/index.js"
     "start:ts": "tsx server/index.ts"
   },
   "dependencies": {
