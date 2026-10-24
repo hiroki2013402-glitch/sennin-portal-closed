@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react';
+import type { FormEvent, PointerEvent } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AccountUser } from '../types';
 
@@ -24,6 +24,7 @@ export function YouTubePage() {
 
 export function ChatPage({ user }: { user: AccountUser | null }) {
   const userId = String(user?.id ?? user?.user_id ?? user?.userId ?? user?.userID ?? user?.sub ?? '');
+  const username = String(user?.username ?? user?.name ?? 'ユーザー');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [content, setContent] = useState('');
   const [busy, setBusy] = useState(false);
@@ -107,7 +108,7 @@ export function ChatPage({ user }: { user: AccountUser | null }) {
 
 export function GamePage() {
   const [hideChrome,setHideChrome]=useState(false); const [pos,setPos]=useState({x:0,y:0}); const gameSrc=useRef<string|null>(null); if(!gameSrc.current){const url=new URL('https://cdn.jsdelivr.net/gh/CloudMoonApp/web@main/portal-260605.html');new URLSearchParams(window.location.search).forEach((v,k)=>url.searchParams.set(k,v));url.searchParams.set('t',String(Date.now()));gameSrc.current=url.toString();} const [dragging,setDragging]=useState(false); const offset=useRef({x:0,y:0}); const started=useRef(false); const moved=useRef(false); const origin=useRef({x:0,y:0});
-  useEffect(()=>{const move=(e:globalThis.PointerEvent)=>{if(!started.current)return;if(Math.abs(e.clientX-origin.current.x)+Math.abs(e.clientY-origin.current.y)>8)moved.current=true;if(moved.current)setPos({x:Math.max(0,Math.min(window.innerWidth-180,e.clientX-offset.current.x)),y:Math.max(0,Math.min(window.innerHeight-60,e.clientY-offset.current.y))});};const up=()=>{started.current=false;setDragging(false);if(moved.current)window.setTimeout(()=>{moved.current=false;},0);};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);};},[]);
-  const start=(e:ReactPointerEvent<HTMLButtonElement>)=>{const r=e.currentTarget.getBoundingClientRect();offset.current={x:e.clientX-r.left,y:e.clientY-r.top};origin.current={x:e.clientX,y:e.clientY};started.current=true;moved.current=false;try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}setDragging(true);};
+  useEffect(()=>{const move=(e:PointerEvent)=>{if(!started.current)return;if(Math.abs(e.clientX-origin.current.x)+Math.abs(e.clientY-origin.current.y)>8)moved.current=true;if(moved.current)setPos({x:Math.max(0,Math.min(window.innerWidth-180,e.clientX-offset.current.x)),y:Math.max(0,Math.min(window.innerHeight-60,e.clientY-offset.current.y))});};const up=()=>{started.current=false;setDragging(false);if(moved.current)window.setTimeout(()=>{moved.current=false;},0);};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);};},[]);
+  const start=(e:PointerEvent<HTMLButtonElement>)=>{const r=e.currentTarget.getBoundingClientRect();offset.current={x:e.clientX-r.left,y:e.clientY-r.top};origin.current={x:e.clientX,y:e.clientY};started.current=true;moved.current=false;try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}setDragging(true);};
   return <section className={`game-page ${hideChrome?'game-immersive':''}`}><div className="game-topline"><div><p className="eyebrow">好きなゲームで遊ぶ</p><h1>ゲーム</h1></div><span>外部ゲームポータル</span></div><div className="game-frame-wrap"><iframe className="game-frame" title="ゲームポータル" src={gameSrc.current} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-downloads" allow="fullscreen; autoplay; gamepad; clipboard-read; clipboard-write" allowFullScreen loading="eager" referrerPolicy="no-referrer"/><div className="game-frame-cover" aria-hidden="true"/></div><button className={`floating-game-toggle ${dragging?'dragging':''}`} style={pos.x||pos.y?{left:pos.x,top:pos.y}:undefined} onPointerDown={start} onClick={()=>{if(!moved.current)setHideChrome(v=>!v);moved.current=false;}} title="ドラッグして移動できます。クリックでサイドバーとフッターを切り替えます。"><i className={`fa-solid ${hideChrome?'fa-eye':'fa-eye-slash'}`}/><span>{hideChrome?'メニューを表示':'メニューを隠す'}</span><i className="fa-solid fa-grip-vertical drag-grip"/></button></section>;
 }

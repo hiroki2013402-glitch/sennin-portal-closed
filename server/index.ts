@@ -34,7 +34,12 @@ const sessionSecret = requiredEnv('SESSION_SECRET');
 const clientSecret = process.env.OAUTH_CLIENT_SECRET || '';
 const authMethod = process.env.OAUTH_CLIENT_AUTH_METHOD || 'client_secret_basic';
 const scopes = (process.env.OAUTH_SCOPES || 'profile email').trim();
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const serverDir = path.dirname(fileURLToPath(import.meta.url));
+// In development this is <project>/server; after compilation it is <project>/dist-server/server.
+// Resolve the project root correctly in both layouts so Express serves <project>/dist/index.html.
+const rootDir = path.basename(path.dirname(serverDir)) === 'dist-server'
+  ? path.resolve(serverDir, '../..')
+  : path.resolve(serverDir, '..');
 
 if (sessionSecret.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters.');
 if (authMethod !== 'client_secret_basic' && authMethod !== 'client_secret_post') {
