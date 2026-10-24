@@ -9,7 +9,7 @@ type TopbarProps = {
 export default function Topbar({ name, initial, authenticated, onRefresh, onOpenAccount }: TopbarProps) {
   return (
     <header className="topbar">
-      <div className="brand-title">Sennin Portal</div>
+      <div className="brand-title">Sennin</div>
       <div className="topbar-actions">
         <button className="icon-button" onClick={onRefresh} aria-label="更新" title="更新">
           <i className="fa-solid fa-rotate" />

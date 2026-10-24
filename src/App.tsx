@@ -10,7 +10,7 @@ import WelcomeCard from './components/dashboard/WelcomeCard';
 import PointsCard from './components/dashboard/PointsCard';
 import ServiceGrid from './components/dashboard/ServiceGrid';
 import AccountModal from './components/account/AccountModal';
-import { ChatPage, GamePage, YouTubePage } from './components/PortalFeatures';
+import { ChatPage, GamePage, YouTubePage } from './pages/PortalFeatures';
 import { displayInitial, displayName } from './lib/account';
 import { usePortalData } from './hooks/usePortalData';
 

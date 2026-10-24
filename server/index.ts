@@ -258,6 +258,8 @@ app.post('/api/chat/messages', requireAuth, async (req, res) => {
   const userId = String(user.id ?? user.user_id ?? user.sub ?? '');
   const username = String(user.username ?? user.name ?? 'ユーザー').slice(0, 60);
   const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+  const roomId = typeof req.body?.roomId === 'string' ? req.body.roomId.trim().slice(0, 160) : 'general';
+  if (!/^(general|group:[^\s]{1,100}|dm:[^\s]{1,140})$/.test(roomId)) { res.status(400).json({ error: 'invalid_room', message: 'チャットルームが正しくありません。' }); return; }
   if (!userId) { res.status(401).json({ error: 'account_user_id_missing' }); return; }
   if (!content || content.length > 1000) { res.status(400).json({ error: 'invalid_message', message: 'メッセージは1〜1000文字で入力してください。' }); return; }
   const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
@@ -266,7 +268,7 @@ app.post('/api/chat/messages', requireAuth, async (req, res) => {
   try {
     const response = await fetch(`${supabaseUrl}/rest/v1/portal_messages`, {
       method: 'POST', headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ user_id: userId, username, content }), signal: AbortSignal.timeout(8000)
+      body: JSON.stringify({ user_id: userId, username, content, room_id: roomId }), signal: AbortSignal.timeout(8000)
     });
     const body = await response.text();
     if (!response.ok) { console.error('Supabase chat insert failed:', response.status, body.slice(0, 300)); res.status(502).json({ error: 'chat_insert_failed', message: 'メッセージを保存できませんでした。' }); return; }

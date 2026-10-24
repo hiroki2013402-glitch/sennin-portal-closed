@@ -4,9 +4,13 @@ create table if not exists public.portal_messages (
   user_id text not null,
   username text not null default 'ユーザー',
   content text not null check (char_length(content) between 1 and 1000),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  room_id text not null default 'general'
 );
+-- Existing installations: add the room identifier without deleting old messages.
+alter table public.portal_messages add column if not exists room_id text not null default 'general';
 create index if not exists portal_messages_created_at_idx on public.portal_messages (created_at desc);
+create index if not exists portal_messages_room_created_at_idx on public.portal_messages (room_id, created_at desc);
 alter table public.portal_messages enable row level security;
 -- Only the public read policy is granted to browser clients. Inserts are performed
 -- by Express using SUPABASE_SERVICE_ROLE_KEY after validating the Sennin Account session.

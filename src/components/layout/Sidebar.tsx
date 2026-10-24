@@ -16,7 +16,7 @@ export default function Sidebar({ expanded, active, items, onToggle, onNavigate 
     <aside className={`sidebar ${expanded ? 'expanded' : ''}`}>
       <button className="sidebar-toggle" onClick={onToggle} aria-label="メニュー切替">
         <i className="fa-solid fa-bars" />
-        {expanded && <span>Sennin Portal</span>}
+        {expanded && <span>ホーム</span>}
       </button>
       <nav className="nav-list" aria-label="メインメニュー">
         {items.map(item => (
@@ -31,7 +31,7 @@ export default function Sidebar({ expanded, active, items, onToggle, onNavigate 
           </button>
         ))}
       </nav>
-      <div className="sidebar-bottom">{expanded && <span>アカウント連携ポータル</span>}</div>
+      <div className="sidebar-bottom">{expanded && <span>メニュー</span>}</div>
     </aside>
   );
 }
